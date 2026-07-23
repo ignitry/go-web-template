@@ -1,0 +1,23 @@
+require "active_record"
+require "dotenv/load"
+require "erb"
+require "yaml"
+
+environment = ENV.fetch("APP_ENV", "development")
+database_yml = ERB.new(File.read("config/database.yml")).result
+config = YAML.safe_load(database_yml, aliases: true).fetch(environment)
+ActiveRecord::Base.establish_connection(config)
+
+namespace :db do
+  task :migrate do
+    ActiveRecord::MigrationContext.new("db/migrate").migrate
+  end
+
+  task :rollback do
+    ActiveRecord::MigrationContext.new("db/migrate").rollback
+  end
+
+  task :status do
+    ActiveRecord::MigrationContext.new("db/migrate").migrations_status.each { |row| puts row.join("  ") }
+  end
+end

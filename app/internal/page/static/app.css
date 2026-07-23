@@ -1,0 +1,9 @@
+body {
+  max-width: 48rem;
+  margin: 4rem auto;
+  padding: 0 1rem;
+  color: #1f2937;
+  font-family: system-ui, sans-serif;
+}
+
+.home { max-width: 32rem; }
