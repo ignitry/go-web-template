@@ -40,18 +40,25 @@ esac
 
 root=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 
-replace() {
-  file=$1
-  temporary="$file.tmp"
-  PROJECT_NAME=$project DATABASE_NAME=$database awk '{ gsub("starter_development", ENVIRON["DATABASE_NAME"]); gsub("starter", ENVIRON["PROJECT_NAME"]); print }' "$file" > "$temporary"
-  mv "$temporary" "$file"
-}
+# Keep the display name readable when the project name contains separators.
+display_name=$(printf '%s\n' "$project" | awk '{ gsub("[-_]", " "); $1=toupper(substr($1,1,1)) substr($1,2); print }')
 
-replace "$root/docker-compose.yml"
-replace "$root/.env.example"
-replace "$root/README.md"
-replace "$root/app/cmd/server/main.go"
-replace "$root/migrate/config/database.yml"
+# Rename every text file so Go packages, tests, templates, and documentation
+# cannot retain references that are missed by an explicit file list.
+find "$root" -type f ! -path "$root/.git/*" ! -path "$root/scripts/rename.sh" \
+  -exec sh -c 'grep -Iq . "$1" && exit 0 || exit 1' sh {} \; \
+  -exec sh -c '
+    file=$1
+    temporary="$file.tmp"
+    MODULE_NAME="$2" PROJECT_NAME="$3" DISPLAY_NAME="$4" DATABASE_NAME="$5" awk '\''{
+      gsub("starter_development", ENVIRON["DATABASE_NAME"])
+      gsub("Starter", ENVIRON["DISPLAY_NAME"])
+      gsub(/"starter\//, "\"" ENVIRON["MODULE_NAME"] "/")
+      gsub("starter", ENVIRON["PROJECT_NAME"])
+      print
+    }'\'' "$file" > "$temporary"
+    mv "$temporary" "$file"
+  ' sh {} "$module" "$project" "$display_name" "$database" \;
 
 temporary="$root/app/go.mod.tmp"
 awk -v module="$module" '$1 == "module" { print "module " module; next } { print }' "$root/app/go.mod" > "$temporary"
