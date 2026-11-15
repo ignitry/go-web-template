@@ -31,6 +31,14 @@ make fmt
 Migrations are managed only with ActiveRecord under `migrate/db/migrate`.
 Docker Compose reads `.env` automatically.
 
+## Migration naming
+
+Always prefix migration filenames with a 14-digit timestamp in `YYYYMMDDhhmmss` format (24-hour time), followed by an underscore and a descriptive name. Do not use sequential numbers such as `001`.
+
+Example: `20261115100630_create_example_records.rb`.
+
+Use the creation timestamp for each new migration and keep prefixes unique so migrations run in chronological order.
+
 ## Rename project
 
 ```sh
