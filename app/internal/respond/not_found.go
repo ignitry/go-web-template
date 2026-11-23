@@ -4,7 +4,9 @@ import (
 	_ "embed"
 	"encoding/json"
 	"html/template"
+	"mime"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -14,10 +16,19 @@ var notFoundHTML string
 var notFoundTemplate = template.Must(template.New("404.html").Parse(notFoundHTML))
 
 func NotFound(w http.ResponseWriter, r *http.Request) {
-	if acceptsJSON(r.Header.Get("Accept")) {
+	w.Header().Add("Vary", "Accept")
+	accept := strings.Join(r.Header.Values("Accept"), ",")
+	htmlQuality, htmlSpecificity := mediaQuality(accept, "text/html", "text/*")
+	jsonQuality, jsonSpecificity := mediaQuality(accept, "application/json", "application/*")
+	if jsonQuality > htmlQuality || (jsonQuality > 0 && jsonQuality == htmlQuality && jsonSpecificity > htmlSpecificity) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusNotFound)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+		return
+	}
+
+	if htmlQuality == 0 {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
@@ -26,12 +37,41 @@ func NotFound(w http.ResponseWriter, r *http.Request) {
 	_ = notFoundTemplate.Execute(w, nil)
 }
 
-func acceptsJSON(accept string) bool {
+func mediaQuality(accept, exact, wildcard string) (quality float64, specificity int) {
+	if strings.TrimSpace(accept) == "" {
+		return 1, 0
+	}
+
+	specificity = -1
 	for _, value := range strings.Split(accept, ",") {
-		mediaType := strings.TrimSpace(strings.SplitN(value, ";", 2)[0])
-		if mediaType == "application/json" {
-			return true
+		mediaType, params, err := mime.ParseMediaType(value)
+		if err != nil {
+			continue
+		}
+
+		var match int
+		switch mediaType {
+		case exact:
+			match = 2
+		case wildcard:
+			match = 1
+		case "*/*":
+			match = 0
+		default:
+			continue
+		}
+
+		q := 1.0
+		if raw, ok := params["q"]; ok {
+			q, err = strconv.ParseFloat(raw, 64)
+			if err != nil || !(q >= 0 && q <= 1) {
+				continue
+			}
+		}
+
+		if match > specificity || (match == specificity && q > quality) {
+			quality, specificity = q, match
 		}
 	}
-	return false
+	return quality, specificity
 }

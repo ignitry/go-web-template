@@ -12,10 +12,10 @@ func TestRoutesNotFound(t *testing.T) {
 
 	routes().ServeHTTP(response, request)
 
-	if response.Code != http.StatusFound {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusFound)
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusNotFound)
 	}
-	if location := response.Header().Get("Location"); location != "/404" {
-		t.Fatalf("location = %q, want %q", location, "/404")
+	if location := response.Header().Get("Location"); location != "" {
+		t.Fatalf("unexpected redirect to %q", location)
 	}
 }
