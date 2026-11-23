@@ -1,26 +1,25 @@
-.PHONY: up down build migrate rollback run test fmt
-
-up:
-#	docker compose up -d postgres
+.PHONY: down build setup migrate rollback run run-production test fmt
 
 down:
-#	docker compose down
+	overmind quit
 
 build:
-#	docker compose build app
-	cd app && go build ./...
+	cd app && go build -trimpath -o ../bin/server ./cmd/server
+
+setup:
+	bundle exec rake db:setup
 
 migrate:
-	# docker compose --profile tools run --rm migrate db:migrate
-	cd migrate && bundle exec rake db:migrate
+	bundle exec rake db:migrate
 
 rollback:
-	#	docker compose --profile tools run --rm migrate db:rollback
-	cd migrate && bundle exec rake db:rollback
+	bundle exec rake db:rollback
 
 run:
-#	docker compose up -d --build app
-	cd app && go run ./cmd/server
+	@if overmind status >/dev/null 2>&1; then overmind restart web; else overmind start -D -f Procfile; fi
+
+run-production:
+	overmind start -f Procfile.production --auto-restart all
 
 test:
 	cd app && go test ./...

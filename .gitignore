@@ -1,4 +1,8 @@
 .env
-app/server
+.env.development
+.env.production
+/app/server
+/bin/
+.overmind.sock
+.bundle/
 migrate/.bundle/
-
